@@ -190,7 +190,8 @@ void eq_window_load_preset(EqWindow* win, const radioform_preset_t* preset) {
     win->current.preamp_db = preset->preamp_db;
     win->current.limiter_enabled = preset->limiter_enabled;
     win->current.limiter_threshold_db = preset->limiter_threshold_db;
-    strncpy(win->current.name, preset->name, sizeof(win->current.name) - 1);
+    strncpy(win->current.name, preset->name, sizeof(win->current.name));
+    win->current.name[sizeof(win->current.name) - 1] = 0;
 
     win->updating = 0;
 }

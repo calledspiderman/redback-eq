@@ -6,13 +6,16 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 #include <pipewire/pipewire.h>
 #include <spa/param/audio/format-utils.h>
 #include "radioform_dsp.h"
 
 struct data {
     struct pw_main_loop* loop;
+    struct pw_core* core;
     struct pw_stream* stream;
+    struct spa_hook stream_listener;
     radioform_dsp_engine_t* dsp;
     uint32_t sample_rate;
     uint32_t channels;
@@ -47,7 +50,7 @@ static const struct pw_stream_events stream_events = {
     .process = on_process,
 };
 
-static struct pw_stream* create_capture_stream(struct pw_context* context, struct data* d) {
+static struct pw_stream* create_capture_stream(struct pw_core* core, struct data* d) {
     struct pw_properties* props = pw_properties_new(
         PW_KEY_MEDIA_TYPE, "Audio",
         PW_KEY_MEDIA_CATEGORY, "Capture",
@@ -69,8 +72,8 @@ static struct pw_stream* create_capture_stream(struct pw_context* context, struc
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(params, sizeof(params));
     const struct spa_pod* pod = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
 
-    struct pw_stream* s = pw_stream_new(context, "radioform-eq-capture", props);
-    pw_stream_add_listener(s, &stream_events, d);
+    struct pw_stream* s = pw_stream_new(core, "radioform-eq-capture", props);
+    pw_stream_add_listener(s, &d->stream_listener, &stream_events, d);
 
     pw_stream_connect(s, PW_DIRECTION_INPUT, PW_ID_ANY,
         PW_STREAM_FLAG_AUTOCONNECT |
@@ -160,6 +163,8 @@ int main(int argc, char* argv[]) {
 
     d.loop = pw_main_loop_new(NULL);
     struct pw_context* context = pw_context_new(pw_main_loop_get_loop(d.loop), NULL, 0);
+    d.core = pw_context_connect(context, NULL, 0);
+    if (!d.core) { fprintf(stderr, "Failed to connect to PipeWire\n"); return 1; }
 
     d.dsp = radioform_dsp_create(d.sample_rate);
     if (!d.dsp) { fprintf(stderr, "Failed to create DSP engine\n"); return 1; }
@@ -170,7 +175,7 @@ int main(int argc, char* argv[]) {
     radioform_dsp_apply_preset(d.dsp, &flat);
 
     // Create capture stream (receives audio from system source)
-    d.stream = create_capture_stream(context, &d);
+    d.stream = create_capture_stream(d.core, &d);
 
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
@@ -189,6 +194,7 @@ int main(int argc, char* argv[]) {
 
     radioform_dsp_destroy(d.dsp);
     pw_stream_destroy(d.stream);
+    pw_core_disconnect(d.core);
     pw_context_destroy(context);
     pw_main_loop_destroy(d.loop);
     pw_deinit();

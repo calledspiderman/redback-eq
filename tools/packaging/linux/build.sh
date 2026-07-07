@@ -7,7 +7,7 @@ echo "✓ Build root: $PWD"
 BUILD_DIR="${BUILD_DIR:-build/linux}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 INSTALL_PREFIX="${INSTALL_PREFIX:-/usr/local}"
-PARALLEL="${PARALLEL:-$(nproc)}"
+PARALLEL="${PARALLEL:-$(nproc 2>/dev/null || echo 4)}"
 
 echo "==> Radioform Linux Build"
 echo "    Build dir:  $BUILD_DIR"

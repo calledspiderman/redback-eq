@@ -12,7 +12,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    add_compile_options(-Wall -Wextra -Wpedantic -Wno-unused-parameter)
+    add_compile_options(-Wall -Wextra -Wno-unused-parameter)
     add_compile_options($<$<CONFIG:Release>:-O3>)
     add_compile_options($<$<CONFIG:Release>:-ffast-math>)
     add_compile_options($<$<CONFIG:Release>:-fno-finite-math-only>)

@@ -13,21 +13,16 @@ static EqWindow* eq_win = NULL;
 static PresetManager* pm = NULL;
 static int control_fd = -1;
 
-static void on_quit(GSimpleAction* action, GVariant* param, gpointer data) {
-    (void)action; (void)param; (void)data;
+static void on_quit(GtkWidget* widget, gpointer data) {
+    (void)widget; (void)data;
     if (eq_win) eq_window_destroy(eq_win);
     gtk_main_quit();
 }
 
-static void on_show(GSimpleAction* action, GVariant* param, gpointer data) {
-    (void)action; (void)param; (void)data;
+static void on_show(GtkWidget* widget, gpointer data) {
+    (void)widget; (void)data;
     if (eq_win) eq_window_present(eq_win);
 }
-
-static GActionEntry app_entries[] = {
-    { "show", on_show, NULL, NULL, NULL },
-    { "quit", on_quit, NULL, NULL, NULL },
-};
 
 static void on_band_changed(void* userdata, int band, float gain_db) {
     (void)userdata;
@@ -53,11 +48,6 @@ static void on_preset_applied(void* userdata, const radioform_preset_t* preset) 
         control_send_preset(control_fd, preset);
 }
 
-static void on_indicator_activate(GtkWidget* widget, gpointer data) {
-    (void)widget; (void)data;
-    if (eq_win) eq_window_present(eq_win);
-}
-
 static void signal_handler(int sig) {
     if (sig == SIGINT || sig == SIGTERM) {
         gtk_main_quit();
@@ -81,10 +71,11 @@ int main(int argc, char* argv[]) {
 
     eq_window_load_preset(eq_win, preset_manager_current(pm));
 
-    indicator = app_indicator_new(
+    indicator = app_indicator_new_with_path(
         "radioform",
         "radioform",
-        APP_INDICATOR_CATEGORY_APPLICATION_STATUS);
+        APP_INDICATOR_CATEGORY_APPLICATION_STATUS,
+        NULL);
 
     app_indicator_set_status(indicator, APP_INDICATOR_STATUS_ACTIVE);
     app_indicator_set_menu(indicator, NULL);
@@ -92,7 +83,7 @@ int main(int argc, char* argv[]) {
     GtkWidget* menu = gtk_menu_new();
 
     GtkWidget* show_item = gtk_menu_item_new_with_label("Show EQ");
-    g_signal_connect(show_item, "activate", G_CALLBACK(on_indicator_activate), NULL);
+    g_signal_connect(show_item, "activate", G_CALLBACK(on_show), NULL);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), show_item);
 
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());

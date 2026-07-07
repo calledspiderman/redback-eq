@@ -38,7 +38,8 @@ static int parse_preset_file(const char* path, radioform_preset_t* preset) {
 
     struct json_object* val;
     if (json_object_object_get_ex(root, "name", &val))
-        strncpy(preset->name, json_object_get_string(val), sizeof(preset->name) - 1);
+        strncpy(preset->name, json_object_get_string(val), sizeof(preset->name));
+    preset->name[sizeof(preset->name) - 1] = 0;
     if (json_object_object_get_ex(root, "preamp_db", &val))
         preset->preamp_db = json_object_get_double(val);
     if (json_object_object_get_ex(root, "limiter_enabled", &val))
