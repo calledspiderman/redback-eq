@@ -81,38 +81,6 @@ static struct pw_stream* create_capture_stream(struct pw_context* context, struc
     return s;
 }
 
-static struct pw_stream* create_playback_stream(struct pw_context* context, struct data* d) {
-    struct pw_properties* props = pw_properties_new(
-        PW_KEY_MEDIA_TYPE, "Audio",
-        PW_KEY_MEDIA_CATEGORY, "Playback",
-        PW_KEY_MEDIA_ROLE, "DSP",
-        PW_KEY_NODE_NAME, "radioform-eq-playback",
-        PW_KEY_NODE_DESCRIPTION, "Radioform EQ Processed Output",
-        NULL
-    );
-
-    struct spa_audio_info_raw info = {
-        .format = SPA_AUDIO_FORMAT_F32,
-        .rate = d->sample_rate,
-        .channels = d->channels,
-    };
-
-    uint8_t params[1024];
-    struct spa_pod_builder b = SPA_POD_BUILDER_INIT(params, sizeof(params));
-    const struct spa_pod* pod = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
-
-    struct pw_stream* s = pw_stream_new(context, "radioform-eq-playback", props);
-    s->user_data = d;
-
-    pw_stream_connect(s, PW_DIRECTION_OUTPUT, PW_ID_ANY,
-        PW_STREAM_FLAG_AUTOCONNECT |
-        PW_STREAM_FLAG_MAP_BUFFERS |
-        PW_STREAM_FLAG_RT_PROCESS,
-        &pod, 1);
-
-    return s;
-}
-
 static void* control_thread(void* userdata) {
     struct data* d = userdata;
     struct sockaddr_un addr = { .sun_family = AF_UNIX };

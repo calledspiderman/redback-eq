@@ -1,30 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
-APP_DIR="AppDir"
-OUTPUT_DIR="${OUTPUT_DIR:-../../dist}"
+APP_DIR="$SCRIPT_DIR/AppDir"
+OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../../dist}"
 VERSION="${VERSION:-1.0.0}"
 
 echo "==> Building Radioform AppImage (version $VERSION)..."
 
 # Build binaries
-"$(dirname "$0")/build.sh"
+"$SCRIPT_DIR/build.sh"
 
 mkdir -p "$APP_DIR/usr/bin"
 mkdir -p "$APP_DIR/usr/share/applications"
 mkdir -p "$APP_DIR/usr/share/icons/hicolor/scalable/apps"
 mkdir -p "$APP_DIR/usr/share/radioform/presets"
 
-BIN_SRC="${BUILD_DIR:-build/linux}/src/filter/radioform-filter"
-UI_SRC="${BUILD_DIR:-build/linux}/linux-ui/radioform-ui"
+BUILD_DIR="${BUILD_DIR:-$SCRIPT_DIR/../../../build/linux}"
+BIN_SRC="$BUILD_DIR/src/filter/radioform-filter"
+UI_SRC="$BUILD_DIR/linux-ui/radioform-ui"
 
 [ -f "$BIN_SRC" ] && cp "$BIN_SRC" "$APP_DIR/usr/bin/"
 [ -f "$UI_SRC" ] && cp "$UI_SRC" "$APP_DIR/usr/bin/"
 
-cp debian/usr/share/applications/radioform.desktop "$APP_DIR/"
-cp debian/usr/share/icons/hicolor/scalable/apps/radioform.svg "$APP_DIR/"
-cp debian/usr/share/radioform/presets/*.json "$APP_DIR/usr/share/radioform/presets/"
+cp "$SCRIPT_DIR/debian/usr/share/applications/radioform.desktop" "$APP_DIR/"
+cp "$SCRIPT_DIR/debian/usr/share/icons/hicolor/scalable/apps/radioform.svg" "$APP_DIR/"
+cp "$SCRIPT_DIR/debian/usr/share/radioform/presets/"*.json "$APP_DIR/usr/share/radioform/presets/"
 
 cat > "$APP_DIR/AppRun" << 'EOF'
 #!/bin/bash

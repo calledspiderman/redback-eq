@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 VERSION="${VERSION:-1.0.0}"
-DEB_DIR="debian"
-OUTPUT_DIR="${OUTPUT_DIR:-../../dist}"
+DEB_DIR="$SCRIPT_DIR/debian"
+OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../../dist}"
 
 mkdir -p "$OUTPUT_DIR"
 
 echo "==> Building Radioform .deb package (version $VERSION)..."
 
 # Build the binaries first
-"$(dirname "$0")/build.sh"
+"$SCRIPT_DIR/build.sh"
 
 # Copy binaries into packaging dir
-BIN_SRC="${BUILD_DIR:-build/linux}/src/filter/radioform-filter"
-UI_SRC="${BUILD_DIR:-build/linux}/linux-ui/radioform-ui"
+BUILD_DIR="${BUILD_DIR:-$SCRIPT_DIR/../../../build/linux}"
+BIN_SRC="$BUILD_DIR/src/filter/radioform-filter"
+UI_SRC="$BUILD_DIR/linux-ui/radioform-ui"
 
 if [ -f "$BIN_SRC" ]; then
     cp "$BIN_SRC" "$DEB_DIR/usr/bin/"

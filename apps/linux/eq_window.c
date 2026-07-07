@@ -72,7 +72,7 @@ EqWindow* eq_window_new(void) {
     gtk_window_set_title(GTK_WINDOW(win->window), "Radioform EQ");
     gtk_window_set_default_size(GTK_WINDOW(win->window), 400, 300);
     gtk_window_set_resizable(GTK_WINDOW(win->window), FALSE);
-    g_signal_connect(win->window, "destroy", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
+    g_signal_connect(win->window, "delete-event", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
 
     GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     gtk_container_add(GTK_CONTAINER(win->window), vbox);

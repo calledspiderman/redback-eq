@@ -1,6 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/../../.."
+echo "✓ Build root: $PWD"
 
 BUILD_DIR="${BUILD_DIR:-build/linux}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
@@ -13,36 +15,32 @@ echo "    Type:       $BUILD_TYPE"
 echo "    Prefix:     $INSTALL_PREFIX"
 echo "    Parallel:   $PARALLEL"
 
-# Install deps (Debian/Ubuntu)
-if command -v apt-get &>/dev/null; then
-    echo "==> Installing build dependencies..."
+# Install deps
+echo "==> Installing build dependencies..."
+if command -v apt-get >/dev/null 2>&1; then
     sudo apt-get update -qq
     sudo apt-get install -y -qq \
         build-essential cmake pkg-config \
         libpipewire-0.3-dev libspa-0.2-dev \
-        libgtk-4-dev libayatana-appindicator3-dev \
+        libgtk-3-dev libayatana-appindicator3-dev \
         libjson-c-dev \
         git curl wget file
-fi
-
-# Arch
-if command -v pacman &>/dev/null; then
-    echo "==> Installing build dependencies..."
+elif command -v pacman >/dev/null 2>&1; then
     sudo pacman -S --needed --noconfirm \
         base-devel cmake pkg-config \
         pipewire libpipewire \
-        gtk4 libappindicator-gtk3 \
+        gtk3 libappindicator-gtk3 \
         json-c
-fi
-
-# Fedora/RHEL
-if command -v dnf &>/dev/null; then
-    echo "==> Installing build dependencies..."
+elif command -v dnf >/dev/null 2>&1; then
     sudo dnf install -y \
         gcc-c++ cmake pkgconfig \
         pipewire-devel spaudio-devel \
-        gtk4-devel libappindicator-gtk3-devel \
+        gtk3-devel libappindicator-gtk3-devel \
         json-c-devel
+else
+    echo "⚠ No supported package manager found. Install deps manually:"
+    echo "   build-essential, cmake, pkg-config, libpipewire-0.3-dev,"
+    echo "   libspa-0.2-dev, libgtk-3-dev, libayatana-appindicator3-dev, libjson-c-dev"
 fi
 
 echo "==> Configuring..."
@@ -61,7 +59,7 @@ echo "✓ Radioform Linux build complete!"
 echo ""
 echo "Run:"
 echo "  radioform-filter       # PipeWire EQ filter daemon"
-echo "  radioform-ui           # GTK4 system tray UI"
+echo "  radioform-ui           # GTK3 system tray UI"
 echo ""
 echo "Or as a service:"
 echo "  radioform-filter &"
