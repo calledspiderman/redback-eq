@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Radioform EQ
+Exec=radioform-filter --preset /tmp/radioform-preset.json
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

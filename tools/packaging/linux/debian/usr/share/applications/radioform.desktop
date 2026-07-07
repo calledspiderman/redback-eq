@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Radioform EQ
+Comment=System-wide 10-band parametric equalizer
+Exec=radioform-ui
+Icon=radioform
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;
+StartupNotify=false

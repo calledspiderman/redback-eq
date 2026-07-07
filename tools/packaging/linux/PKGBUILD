@@ -1,0 +1,49 @@
+# Maintainer: Radioform Developers
+# Contributor: Pouya
+
+pkgname=radioform
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="System-wide 10-band parametric equalizer for Linux"
+arch=('x86_64' 'aarch64')
+url="https://github.com/Torteous44/radioform"
+license=('GPL3')
+depends=(
+    'pipewire>=0.3'
+    'gtk4>=4.0'
+    'libappindicator-gtk3'
+    'json-c>=0.15'
+)
+makedepends=(
+    'cmake>=3.20'
+    'gcc'
+    'pkgconf'
+)
+source=("${pkgname}-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+    cmake -S packages/linux -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build -j"$(nproc)"
+}
+
+package() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+    cmake --install build --prefix "${pkgdir}/usr"
+
+    install -Dm644 tools/packaging/linux/debian/usr/share/applications/radioform.desktop \
+        "${pkgdir}/usr/share/applications/radioform.desktop"
+
+    install -Dm644 tools/packaging/linux/debian/usr/share/icons/hicolor/scalable/apps/radioform.svg \
+        "${pkgdir}/usr/share/icons/hicolor/scalable/apps/radioform.svg"
+
+    install -dm755 "${pkgdir}/usr/share/radioform/presets"
+    install -m644 tools/packaging/linux/debian/usr/share/radioform/presets/*.json \
+        "${pkgdir}/usr/share/radioform/presets/"
+
+    install -Dm644 tools/packaging/linux/debian/usr/lib/systemd/user/radioform-filter.service \
+        "${pkgdir}/usr/lib/systemd/user/radioform-filter.service"
+}

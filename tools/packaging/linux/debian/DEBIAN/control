@@ -1,0 +1,14 @@
+Package: radioform
+Version: 1.0.0
+Section: sound
+Priority: optional
+Architecture: amd64
+Depends: libpipewire-0.3-0 (>= 0.3.0), libgtk-4-1 (>= 4.0), libayatana-appindicator3-1 (>= 0.5), libjson-c5 (>= 0.15), libc6 (>= 2.31)
+Maintainer: Radioform Developers
+Description: System-wide 10-band parametric equalizer for Linux
+ Radioform is a free, open-source system equalizer that applies
+ a clean, precise 10-band parametric EQ across everything you play.
+ .
+ It features a PipeWire filter for real-time audio processing and
+ a GTK4 system tray app for intuitive EQ control.
+Homepage: https://github.com/Torteous44/radioform

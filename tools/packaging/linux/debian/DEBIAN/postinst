@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+# Enable PipeWire module on install
+if command -v systemctl &>/dev/null; then
+    systemctl --user enable radioform-filter 2>/dev/null || true
+    systemctl --user start radioform-filter 2>/dev/null || true
+fi
+
+echo "Radioform installed! Run 'radioform-filter &' and 'radioform-ui &' to start."

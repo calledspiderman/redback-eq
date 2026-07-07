@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+if command -v systemctl &>/dev/null; then
+    systemctl --user stop radioform-filter 2>/dev/null || true
+    systemctl --user disable radioform-filter 2>/dev/null || true
+fi
+
+echo "Radioform uninstalled."
