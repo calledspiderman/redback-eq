@@ -8,14 +8,15 @@
 #include <sys/un.h>
 #include <sys/stat.h>
 #include <pipewire/pipewire.h>
+#include <pipewire/filter.h>
 #include <spa/param/audio/format-utils.h>
 #include "radioform_dsp.h"
 
 struct data {
     struct pw_main_loop* loop;
     struct pw_core* core;
-    struct pw_stream* stream;
-    struct spa_hook stream_listener;
+    struct pw_filter* filter;
+    struct spa_hook filter_listener;
     radioform_dsp_engine_t* dsp;
     uint32_t sample_rate;
     uint32_t channels;
@@ -24,41 +25,45 @@ struct data {
 
 static void on_process(void* userdata) {
     struct data* d = userdata;
-    struct pw_buffer* b = pw_stream_dequeue_buffer(d->stream);
-    if (!b) return;
 
-    struct spa_buffer* buf = b->buffer;
-    if (buf->n_datas < 1 || !buf->datas[0].data) {
-        pw_stream_queue_buffer(d->stream, b);
-        return;
+    struct pw_buffer* in_buf = pw_filter_dequeue_buffer(d->filter, PW_DIRECTION_INPUT);
+    struct pw_buffer* out_buf = pw_filter_dequeue_buffer(d->filter, PW_DIRECTION_OUTPUT);
+    if (!in_buf || !out_buf) return;
+
+    struct spa_buffer* in = in_buf->buffer;
+    struct spa_buffer* out = out_buf->buffer;
+
+    if (in->n_datas < 1 || !in->datas[0].data ||
+        out->n_datas < 1 || !out->datas[0].data) {
+        goto done;
     }
 
-    uint32_t n_frames = buf->datas[0].chunk->size / (d->channels * sizeof(float));
-    if (n_frames == 0) {
-        pw_stream_queue_buffer(d->stream, b);
-        return;
-    }
+    uint32_t n_frames = in->datas[0].chunk->size / (d->channels * sizeof(float));
+    if (n_frames == 0) goto done;
 
-    float* samples = (float*)buf->datas[0].data;
-    radioform_dsp_process_interleaved(d->dsp, samples, samples, n_frames);
+    float* in_samples = (float*)in->datas[0].data;
+    float* out_samples = (float*)out->datas[0].data;
 
-    pw_stream_queue_buffer(d->stream, b);
+    radioform_dsp_process_interleaved(d->dsp, in_samples, out_samples, n_frames);
+
+done:
+    if (in_buf) pw_filter_queue_buffer(d->filter, in_buf);
+    if (out_buf) pw_filter_queue_buffer(d->filter, out_buf);
 }
 
-static const struct pw_stream_events stream_events = {
-    PW_VERSION_STREAM_EVENTS,
+static const struct pw_filter_events filter_events = {
+    PW_VERSION_FILTER_EVENTS,
     .process = on_process,
 };
 
-static struct pw_stream* create_capture_stream(struct pw_core* core, struct data* d) {
+static int create_filter(struct pw_core* core, struct data* d) {
     struct pw_properties* props = pw_properties_new(
         PW_KEY_MEDIA_TYPE, "Audio",
-        PW_KEY_MEDIA_CATEGORY, "Capture",
+        PW_KEY_MEDIA_CATEGORY, "Filter",
         PW_KEY_MEDIA_ROLE, "DSP",
         PW_KEY_NODE_NAME, "radioform-eq",
         PW_KEY_NODE_DESCRIPTION, "Radioform 10-Band Equalizer",
         PW_KEY_NODE_VIRTUAL, "true",
-        PW_KEY_PRIORITY_SESSION, "1",
         NULL
     );
 
@@ -72,16 +77,20 @@ static struct pw_stream* create_capture_stream(struct pw_core* core, struct data
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(params, sizeof(params));
     const struct spa_pod* pod = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
 
-    struct pw_stream* s = pw_stream_new(core, "radioform-eq-capture", props);
-    pw_stream_add_listener(s, &d->stream_listener, &stream_events, d);
+    d->filter = pw_filter_new(core, "radioform-eq-filter", props);
+    if (!d->filter) return -1;
 
-    pw_stream_connect(s, PW_DIRECTION_INPUT, PW_ID_ANY,
-        PW_STREAM_FLAG_AUTOCONNECT |
-        PW_STREAM_FLAG_MAP_BUFFERS |
-        PW_STREAM_FLAG_RT_PROCESS,
-        &pod, 1);
+    pw_filter_add_listener(d->filter, &d->filter_listener, &filter_events, d);
 
-    return s;
+    if (pw_filter_connect(d->filter,
+            PW_FILTER_FLAG_MAP_BUFFERS,
+            &pod, 1) < 0) {
+        pw_filter_destroy(d->filter);
+        d->filter = NULL;
+        return -1;
+    }
+
+    return 0;
 }
 
 static void* control_thread(void* userdata) {
@@ -174,8 +183,10 @@ int main(int argc, char* argv[]) {
     radioform_dsp_preset_init_flat(&flat);
     radioform_dsp_apply_preset(d.dsp, &flat);
 
-    // Create capture stream (receives audio from system source)
-    d.stream = create_capture_stream(d.core, &d);
+    if (create_filter(d.core, &d) < 0) {
+        fprintf(stderr, "Failed to create PipeWire filter\n");
+        return 1;
+    }
 
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
@@ -185,15 +196,17 @@ int main(int argc, char* argv[]) {
 
     printf("radioform-filter: running (rate=%u Hz, channels=%u)\n", d.sample_rate, d.channels);
     printf("radioform-filter: control socket at /tmp/radioform-control.sock\n");
-    printf("radioform-filter: Connect audio sources to 'Radioform 10-Band Equalizer'\n");
-    printf("radioform-filter: Route output to your speakers via your audio settings\n");
+    printf("radioform-filter: Node 'Radioform 10-Band Equalizer' created\n");
+    printf("radioform-filter: Use pw-link to route audio through the filter\n");
+    printf("radioform-filter:   pw-link <source> radioform-eq:input_0\n");
+    printf("radioform-filter:   pw-link radioform-eq:output_0 <sink>\n");
 
     while (running) {
         pw_main_loop_run(d.loop);
     }
 
     radioform_dsp_destroy(d.dsp);
-    pw_stream_destroy(d.stream);
+    if (d.filter) pw_filter_destroy(d.filter);
     pw_core_disconnect(d.core);
     pw_context_destroy(context);
     pw_main_loop_destroy(d.loop);
